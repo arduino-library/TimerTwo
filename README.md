@@ -1,6 +1,6 @@
 # TimerTwo
 
-This library provide simple abstraction layers for the ATmega328p’s timer/counter 2. 
+This library provide simple abstraction layers for the ATmega328p’s Timer/Counter 2. 
 
 
 Usage example:
