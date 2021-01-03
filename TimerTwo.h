@@ -25,13 +25,13 @@ class TimerTwo
     unsigned char clockSelectBits;
 
     // methods
-    void initialize(long microseconds=25000);
+    long initialize(long microseconds=25000);
     void start();
     void stop();
     void restart();
     void attachInterrupt(void (*isr)(), long microseconds=-1);
     void detachInterrupt();
-    void setPeriod(long microseconds);
+    long setPeriod(long microseconds);
     void (*isrCallback)();
 };
 

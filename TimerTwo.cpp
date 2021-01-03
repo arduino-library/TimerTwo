@@ -22,14 +22,16 @@ ISR(TIMER2_OVF_vect)          // interrupt service routine that wraps a user def
   Timer2.isrCallback();
 }
 
-void TimerTwo::initialize(long microseconds)
+long TimerTwo::initialize(long microseconds)
 {
   TCCR2A = _BV(WGM20);        // clear control register A 
   TCCR2B = _BV(WGM22);        // set mode as phase correct pwm, stop the timer
-  setPeriod(microseconds);
+  long cycles = setPeriod(microseconds);
+  long stepSize = microseconds / cycles; // calculate minimum timer period increment step size
+  return stepSize;
 }
 
-void TimerTwo::setPeriod(long microseconds)
+long TimerTwo::setPeriod(long microseconds)
 {
   long cycles = (F_CPU * microseconds) / 2000000;                          // the counter runs backwards after TOP, interrupt is at BOTTOM so divide microseconds by 2
   if(cycles < RESOLUTION)              clockSelectBits = _BV(CS20);              // no prescale, full xtal
@@ -42,7 +44,8 @@ void TimerTwo::setPeriod(long microseconds)
   else        cycles = RESOLUTION - 1, clockSelectBits = _BV(CS22) | _BV(CS21) | _BV(CS20);  // request was out of bounds, set as maximum
   OCR2A = cycles;                                                                // OCR2A is TOP in phase correct pwm mode for Timer2
   TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));                                // reset clock select register
-  TCCR2B |= clockSelectBits;                                                     
+  TCCR2B |= clockSelectBits;
+  return cycles;
 }
 
 void TimerTwo::attachInterrupt(void (*isr)(), long microseconds)
