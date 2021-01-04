@@ -2,6 +2,7 @@
  *  Interrupt utilities for 8 bit Timer2 on ATmega328
  *  Based on "TimerOne" by Jesse Tane for http://labs.ideo.com August 2008
  *  Modified December 2017 by Karim Hraibi to work with the Timer/Counter 2 of ATmega328 ( http://www.github.com/microfarad-de )
+ *  Modified January 2021 by Karim Hraibi: calculate the period step size ( http://www.github.com/microfarad-de )
  *
  *  This is free software. You can redistribute it and/or modify it under
  *  the terms of Creative Commons Attribution 3.0 United States License. 
@@ -12,28 +13,28 @@
 
 #include "TimerTwo.h"
 
-#define RESOLUTION 256    // Timer2 is 8 bit
+#define RESOLUTION 256  // Timer2 is 8 bit
 
 
-TimerTwo Timer2;              // preinstatiate
+TimerTwo Timer2;        // preinstatiate
 
-ISR(TIMER2_OVF_vect)          // interrupt service routine that wraps a user defined function supplied by attachInterrupt
+ISR(TIMER2_OVF_vect)    // interrupt service routine that wraps a user defined function supplied by attachInterrupt
 {
   Timer2.isrCallback();
 }
 
 long TimerTwo::initialize(long microseconds)
 {
-  TCCR2A = _BV(WGM20);        // clear control register A 
-  TCCR2B = _BV(WGM22);        // set mode as phase correct pwm, stop the timer
+  TCCR2A = _BV(WGM20);                    // set mode as phase correct pwm, stop the timer
+  TCCR2B = _BV(WGM22);                    // set mode as phase correct pwm, stop the timer
   long cycles = setPeriod(microseconds);
-  long stepSize = microseconds / cycles; // calculate minimum timer period increment step size
+  long stepSize = microseconds / cycles;  // calculate minimum timer period increment step size
   return stepSize;
 }
 
 long TimerTwo::setPeriod(long microseconds)
 {
-  long cycles = (F_CPU * microseconds) / 2000000;                          // the counter runs backwards after TOP, interrupt is at BOTTOM so divide microseconds by 2
+  long cycles = (F_CPU * microseconds) / 2000000;                                // the counter runs backwards after TOP, interrupt is at BOTTOM so divide microseconds by 2
   if(cycles < RESOLUTION)              clockSelectBits = _BV(CS20);              // no prescale, full xtal
   else if((cycles >>= 3) < RESOLUTION) clockSelectBits = _BV(CS21);              // prescale by /8
   else if((cycles >>= 2) < RESOLUTION) clockSelectBits = _BV(CS21) | _BV(CS20);  // prescale by /32
@@ -44,22 +45,22 @@ long TimerTwo::setPeriod(long microseconds)
   else        cycles = RESOLUTION - 1, clockSelectBits = _BV(CS22) | _BV(CS21) | _BV(CS20);  // request was out of bounds, set as maximum
   OCR2A = cycles;                                                                // OCR2A is TOP in phase correct pwm mode for Timer2
   TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));                                // reset clock select register
-  TCCR2B |= clockSelectBits;
+  TCCR2B |= clockSelectBits;                                                     // set the prescaler value
   return cycles;
 }
 
 void TimerTwo::attachInterrupt(void (*isr)(), long microseconds)
 {
   if(microseconds > 0) setPeriod(microseconds);
-  isrCallback = isr;                                       // register the user's callback with the real ISR
-  TIMSK2 = _BV(TOIE2);                                     // sets the timer overflow interrupt enable bit
-  sei();                                                   // ensures that interrupts are globally enabled
+  isrCallback = isr;                               // register the user's callback with the real ISR
+  TIMSK2 = _BV(TOIE2);                             // sets the timer overflow interrupt enable bit
+  sei();                                           // ensures that interrupts are globally enabled
   start();
 }
 
 void TimerTwo::detachInterrupt()
 {
-  TIMSK2 &= ~_BV(TOIE2);                                   // clears the timer overflow interrupt enable bit 
+  TIMSK2 &= ~_BV(TOIE2);                           // clears the timer overflow interrupt enable bit 
 }
 
 void TimerTwo::start()
@@ -69,7 +70,7 @@ void TimerTwo::start()
 
 void TimerTwo::stop()
 {
-  TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));          // clears all clock selects bits
+  TCCR2B &= ~(_BV(CS20) | _BV(CS21) | _BV(CS22));  // clears all clock selects bits
 }
 
 void TimerTwo::restart()
